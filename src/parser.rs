@@ -2,7 +2,7 @@ use crate::lexer::{Token, TokenList, TokenType};
 use std::iter::Peekable;
 
 /// Node type for our Abstract Syntax Tree (AST)
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum ASTNode {
     StructDeclaration(NamedStatementList),
     EnumDeclaration(NamedStatementList),
@@ -14,7 +14,7 @@ pub enum ASTNode {
 
 /// All of our supported data types, including types defined by the user (e.g a struct or enum).
 /// During parsing, we do not check whether a user defined type has actually been defined
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum DataType {
     U8,
     I8,
@@ -57,36 +57,45 @@ fn is_type(name: &str) -> bool {
 
 /// Data required to define a struct member
 /// data_type takes an ASTNode to allow inline definition of a struct or enum
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct StructMemberDeclaration {
     pub name: String,
     pub data_type: Box<ASTNode>,
 }
 
 /// Simple enum member declaration; Only has a name (we do not emulate an underlying type)
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct EnumMemberDeclaration {
-    name: String,
+    pub name: String,
 }
 
 /// A named statement list - Either a struct or an enum.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct NamedStatementList {
     pub name: String,
     pub child_nodes: Vec<ASTNode>,
 }
 
+impl NamedStatementList {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            child_nodes: Vec::new(),
+        }
+    }
+}
+
 /// Root node for our AST
-#[derive(Default, PartialEq, Eq, Debug)]
+#[derive(Default, PartialEq, Eq, Debug, Clone)]
 pub struct DataDefinition {
-    child_nodes: Vec<ASTNode>,
+    pub child_nodes: Vec<ASTNode>,
 }
 
 /// Simple parsing error type
 /// # Meanings
-/// UnexpectedToken - an out of place token was found while parsing
+/// UnexpectedToken - an out of place token was found while parsing,
 /// UnexpectedEndOfTokens - The tokens ended before an ASTNode was finished parsing
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ParseError {
     UnexpectedToken,
     UnexpectedEndOfTokens,
@@ -134,7 +143,7 @@ fn unwrap_or_error(token: Option<&Token>) -> Result<&Token, ParseError> {
 /// # Returns
 /// () if the token was both Some, and the type was the expected type,
 /// ParseError::UnexpectedToken if the token was not the expected type,
-/// ParseError::UnexpectedEndOfTokens if token was none
+/// ParseError::UnexpectedEndOfTokens if token was None
 fn assert_token(token: Option<&Token>, expected_token: TokenType) -> Result<(), ParseError> {
     match token {
         Some(token) => {
@@ -314,21 +323,23 @@ mod tests {
         let tokens = lex_tokens(String::from(TEXT)).expect("should be able to lex");
 
         let ast_start = parse_tokens(tokens).expect("should be able to parse");
-        let expected_ast = ASTNode::DataDefinition(DataDefinition{ child_nodes: vec![
-            ASTNode::StructDeclaration(NamedStatementList {
+        let expected_ast = ASTNode::DataDefinition(DataDefinition {
+            child_nodes: vec![ASTNode::StructDeclaration(NamedStatementList {
                 name: String::from("name"),
                 child_nodes: vec![
                     ASTNode::StructMemberDeclaration(StructMemberDeclaration {
                         name: String::from("member1"),
-                        data_type: Box::new(ASTNode::TypeLiteral(DataType::U32))
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::U32)),
                     }),
                     ASTNode::StructMemberDeclaration(StructMemberDeclaration {
                         name: String::from("member2"),
-                        data_type: Box::new(ASTNode::TypeLiteral(DataType::Option(Box::new(DataType::F32))))
-                    })
-                ]
-            })
-        ]});
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::Option(Box::new(
+                            DataType::F32,
+                        )))),
+                    }),
+                ],
+            })],
+        });
 
         assert_eq!(ast_start, expected_ast);
     }
