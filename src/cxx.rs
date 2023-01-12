@@ -142,6 +142,7 @@ fn generate_type_name(data_type: &DataType) -> String {
         DataType::F64 => "double".to_owned(),
         DataType::Char => "char".to_owned(),
         DataType::String => "std::string".to_owned(),
+        DataType::Bool => "bool".to_owned(),
         DataType::Option(inner_type) => {
             format!("std::optional<{}>", generate_type_name(inner_type))
         }

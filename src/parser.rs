@@ -28,6 +28,7 @@ pub enum DataType {
     F64,
     Char,
     String,
+    Bool,
     Option(Box<DataType>),
     Array(Box<DataType>),
     UserDefined(String),
@@ -285,6 +286,9 @@ fn parse_type<'a>(
         "i64" => Ok(DataType::I64),
         "f32" => Ok(DataType::F32),
         "f64" => Ok(DataType::F64),
+        "char" => Ok(DataType::Char),
+        "string" => Ok(DataType::String),
+        "bool" => Ok(DataType::Bool),
         "option" => {
             assert_token(token_iter.next(), TokenType::LParen)?;
             let next_type_name = unwrap_or_error(token_iter.next())?;
