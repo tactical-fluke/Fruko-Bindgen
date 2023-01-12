@@ -1,7 +1,6 @@
 ///Code generation for C++
 /// Includes AST transformation, which effectively just pulls inline struct and enum declarations
 /// out of line
-
 use crate::parser::{
     ASTNode, DataDefinition, DataType, NamedStatementList, StructMemberDeclaration,
 };
@@ -162,57 +161,58 @@ mod tests {
     #[test]
     fn test_ast_transformation() {
         let initial_ast = ASTNode::DataDefinition(DataDefinition {
-            child_nodes: vec![
-                ASTNode::StructDeclaration(NamedStatementList {
-                    name: "outer struct".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "outer struct member 1".to_owned(),
-                            data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
-                                name: "inner struct 1".to_owned(),
-                                child_nodes: vec![
-                                    ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                                        name: "inner struct 1 member 1".to_owned(),
-                                        data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
-                                            name: "inner struct 2".to_owned(),
-                                            child_nodes: Vec::new()
-                                        }))
-                                    })
-                                ]
-                            }))
-                        })
-                    ]
-                })
-            ]
+            child_nodes: vec![ASTNode::StructDeclaration(NamedStatementList {
+                name: "outer struct".to_owned(),
+                child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                    name: "outer struct member 1".to_owned(),
+                    data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
+                        name: "inner struct 1".to_owned(),
+                        child_nodes: vec![ASTNode::StructMemberDeclaration(
+                            StructMemberDeclaration {
+                                name: "inner struct 1 member 1".to_owned(),
+                                data_type: Box::new(ASTNode::StructDeclaration(
+                                    NamedStatementList {
+                                        name: "inner struct 2".to_owned(),
+                                        child_nodes: Vec::new(),
+                                    },
+                                )),
+                            },
+                        )],
+                    })),
+                })],
+            })],
         });
 
         let transformed_ast = ASTNode::DataDefinition(DataDefinition {
             child_nodes: vec![
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "inner struct 2".to_owned(),
-                    child_nodes: Vec::new()
+                    child_nodes: Vec::new(),
                 }),
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "inner struct 1".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "inner struct 1 member 1".to_owned(),
-                            data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined("inner struct 2".to_owned())))
-                        })
-                    ]
+                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                        name: "inner struct 1 member 1".to_owned(),
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
+                            "inner struct 2".to_owned(),
+                        ))),
+                    })],
                 }),
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "outer struct".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "outer struct member 1".to_owned(),
-                            data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined("inner struct 1".to_owned())))
-                        })
-                    ]
-                })
-            ]
+                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                        name: "outer struct member 1".to_owned(),
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
+                            "inner struct 1".to_owned(),
+                        ))),
+                    })],
+                }),
+            ],
         });
-        assert_eq!(CXXASTTransformer::transform_ast(initial_ast), transformed_ast);
+        assert_eq!(
+            CXXASTTransformer::transform_ast(initial_ast),
+            transformed_ast
+        );
     }
 
     #[test]
@@ -221,27 +221,27 @@ mod tests {
             child_nodes: vec![
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "inner struct 2".to_owned(),
-                    child_nodes: Vec::new()
+                    child_nodes: Vec::new(),
                 }),
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "inner struct 1".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "inner struct 1 member 1".to_owned(),
-                            data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined("inner struct 2".to_owned())))
-                        })
-                    ]
+                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                        name: "inner struct 1 member 1".to_owned(),
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
+                            "inner struct 2".to_owned(),
+                        ))),
+                    })],
                 }),
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "outer struct".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "outer struct member 1".to_owned(),
-                            data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined("inner struct 1".to_owned())))
-                        })
-                    ]
-                })
-            ]
+                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                        name: "outer struct member 1".to_owned(),
+                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
+                            "inner struct 1".to_owned(),
+                        ))),
+                    })],
+                }),
+            ],
         });
 
         assert_eq!(generate(&transformed_ast), GENERATED_OUTPUT);
@@ -250,28 +250,26 @@ mod tests {
     #[test]
     fn test_cxx_generation() {
         let initial_ast = ASTNode::DataDefinition(DataDefinition {
-            child_nodes: vec![
-                ASTNode::StructDeclaration(NamedStatementList {
-                    name: "outer struct".to_owned(),
-                    child_nodes: vec![
-                        ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                            name: "outer struct member 1".to_owned(),
-                            data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
-                                name: "inner struct 1".to_owned(),
-                                child_nodes: vec![
-                                    ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                                        name: "inner struct 1 member 1".to_owned(),
-                                        data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
-                                            name: "inner struct 2".to_owned(),
-                                            child_nodes: Vec::new()
-                                        }))
-                                    })
-                                ]
-                            }))
-                        })
-                    ]
-                })
-            ]
+            child_nodes: vec![ASTNode::StructDeclaration(NamedStatementList {
+                name: "outer struct".to_owned(),
+                child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
+                    name: "outer struct member 1".to_owned(),
+                    data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
+                        name: "inner struct 1".to_owned(),
+                        child_nodes: vec![ASTNode::StructMemberDeclaration(
+                            StructMemberDeclaration {
+                                name: "inner struct 1 member 1".to_owned(),
+                                data_type: Box::new(ASTNode::StructDeclaration(
+                                    NamedStatementList {
+                                        name: "inner struct 2".to_owned(),
+                                        child_nodes: Vec::new(),
+                                    },
+                                )),
+                            },
+                        )],
+                    })),
+                })],
+            })],
         });
 
         assert_eq!(generate_code(initial_ast), GENERATED_OUTPUT);
