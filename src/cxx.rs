@@ -158,9 +158,8 @@ mod tests {
 
     const GENERATED_OUTPUT: &str = "struct inner struct 2 {  };struct inner struct 1 { inner struct 2 inner struct 1 member 1; };struct outer struct { inner struct 1 outer struct member 1; };";
 
-    #[test]
-    fn test_ast_transformation() {
-        let initial_ast = ASTNode::DataDefinition(DataDefinition {
+    fn initial_ast() -> ASTNode {
+        ASTNode::DataDefinition(DataDefinition {
             child_nodes: vec![ASTNode::StructDeclaration(NamedStatementList {
                 name: "outer struct".to_owned(),
                 child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
@@ -181,9 +180,11 @@ mod tests {
                     })),
                 })],
             })],
-        });
+        })
+    }
 
-        let transformed_ast = ASTNode::DataDefinition(DataDefinition {
+    fn transformed_ast() -> ASTNode {
+        ASTNode::DataDefinition(DataDefinition {
             child_nodes: vec![
                 ASTNode::StructDeclaration(NamedStatementList {
                     name: "inner struct 2".to_owned(),
@@ -208,70 +209,24 @@ mod tests {
                     })],
                 }),
             ],
-        });
+        })
+    }
+
+    #[test]
+    fn test_ast_transformation() {
         assert_eq!(
-            CXXASTTransformer::transform_ast(initial_ast),
-            transformed_ast
+            CXXASTTransformer::transform_ast(initial_ast()),
+            transformed_ast()
         );
     }
 
     #[test]
     fn test_cxx_code_generation() {
-        let transformed_ast = ASTNode::DataDefinition(DataDefinition {
-            child_nodes: vec![
-                ASTNode::StructDeclaration(NamedStatementList {
-                    name: "inner struct 2".to_owned(),
-                    child_nodes: Vec::new(),
-                }),
-                ASTNode::StructDeclaration(NamedStatementList {
-                    name: "inner struct 1".to_owned(),
-                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                        name: "inner struct 1 member 1".to_owned(),
-                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
-                            "inner struct 2".to_owned(),
-                        ))),
-                    })],
-                }),
-                ASTNode::StructDeclaration(NamedStatementList {
-                    name: "outer struct".to_owned(),
-                    child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                        name: "outer struct member 1".to_owned(),
-                        data_type: Box::new(ASTNode::TypeLiteral(DataType::UserDefined(
-                            "inner struct 1".to_owned(),
-                        ))),
-                    })],
-                }),
-            ],
-        });
-
-        assert_eq!(generate(&transformed_ast), GENERATED_OUTPUT);
+        assert_eq!(generate(&transformed_ast()), GENERATED_OUTPUT);
     }
 
     #[test]
     fn test_cxx_generation() {
-        let initial_ast = ASTNode::DataDefinition(DataDefinition {
-            child_nodes: vec![ASTNode::StructDeclaration(NamedStatementList {
-                name: "outer struct".to_owned(),
-                child_nodes: vec![ASTNode::StructMemberDeclaration(StructMemberDeclaration {
-                    name: "outer struct member 1".to_owned(),
-                    data_type: Box::new(ASTNode::StructDeclaration(NamedStatementList {
-                        name: "inner struct 1".to_owned(),
-                        child_nodes: vec![ASTNode::StructMemberDeclaration(
-                            StructMemberDeclaration {
-                                name: "inner struct 1 member 1".to_owned(),
-                                data_type: Box::new(ASTNode::StructDeclaration(
-                                    NamedStatementList {
-                                        name: "inner struct 2".to_owned(),
-                                        child_nodes: Vec::new(),
-                                    },
-                                )),
-                            },
-                        )],
-                    })),
-                })],
-            })],
-        });
-
-        assert_eq!(generate_code(initial_ast), GENERATED_OUTPUT);
+        assert_eq!(generate_code(initial_ast()), GENERATED_OUTPUT);
     }
 }
