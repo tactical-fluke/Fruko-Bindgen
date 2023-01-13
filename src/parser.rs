@@ -34,28 +34,6 @@ pub enum DataType {
     UserDefined(String),
 }
 
-/// helper method - returns whether the specified name is an integral type
-/// # Returns
-/// true if the name is an integral type, false otherwise
-fn is_type(name: &str) -> bool {
-    matches!(
-        name,
-        "u8" | "i8"
-            | "u16"
-            | "i16"
-            | "u32"
-            | "i32"
-            | "u64"
-            | "i64"
-            | "f32"
-            | "f64"
-            | "char"
-            | "string"
-            | "option"
-            | "array"
-    )
-}
-
 /// Data required to define a struct member
 /// data_type takes an ASTNode to allow inline definition of a struct or enum
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -246,7 +224,7 @@ fn parse_named_statement_list_children<'a>(
 }
 
 /// Parses a struct member type declaration. This could either by a TypeLiteral, an inline struct
-/// definition, or an inline enum defintion
+/// definition, or an inline enum definition
 fn parse_struct_member_type_declaration<'a>(
     token_iter: &mut Peekable<impl Iterator<Item = &'a Token>>,
 ) -> Result<ASTNode, ParseError> {
@@ -259,59 +237,52 @@ fn parse_struct_member_type_declaration<'a>(
         TokenType::Enum => Ok(ASTNode::EnumDeclaration(parse_named_statement_list(
             token_iter,
         )?)),
-        TokenType::Identifier(name) if is_type(name) => {
-            Ok(ASTNode::TypeLiteral(parse_type(name, token_iter)?))
-        }
-        TokenType::Identifier(name) => {
-            Ok(ASTNode::TypeLiteral(DataType::UserDefined(name.clone())))
-        }
-        _ => Err(ParseError::UnexpectedToken),
+        type_token => Ok(ASTNode::TypeLiteral(parse_literal_type(
+            type_token, token_iter,
+        )?)),
     }
 }
 
 /// Parses a type literal. In the case of an array or an option, the inner types are parsed
 /// recursively
-fn parse_type<'a>(
-    first_typename: &str,
+fn parse_literal_type<'a>(
+    type_token: &TokenType,
     token_iter: &mut Peekable<impl Iterator<Item = &'a Token>>,
 ) -> Result<DataType, ParseError> {
-    match first_typename {
-        "u8" => Ok(DataType::U8),
-        "u16" => Ok(DataType::U16),
-        "u32" => Ok(DataType::U32),
-        "u64" => Ok(DataType::U64),
-        "i8" => Ok(DataType::I8),
-        "i16" => Ok(DataType::I16),
-        "i32" => Ok(DataType::I32),
-        "i64" => Ok(DataType::I64),
-        "f32" => Ok(DataType::F32),
-        "f64" => Ok(DataType::F64),
-        "char" => Ok(DataType::Char),
-        "string" => Ok(DataType::String),
-        "bool" => Ok(DataType::Bool),
-        "option" => {
+    match type_token {
+        TokenType::U8 => Ok(DataType::U8),
+        TokenType::U16 => Ok(DataType::U16),
+        TokenType::U32 => Ok(DataType::U32),
+        TokenType::U64 => Ok(DataType::U64),
+        TokenType::I8 => Ok(DataType::I8),
+        TokenType::I16 => Ok(DataType::I16),
+        TokenType::I32 => Ok(DataType::I32),
+        TokenType::I64 => Ok(DataType::I64),
+        TokenType::F32 => Ok(DataType::F32),
+        TokenType::F64 => Ok(DataType::F64),
+        TokenType::String => Ok(DataType::String),
+        TokenType::Char => Ok(DataType::Char),
+        TokenType::Bool => Ok(DataType::Bool),
+        TokenType::Option => {
             assert_token(token_iter.next(), TokenType::LParen)?;
-            let next_type_name = unwrap_or_error(token_iter.next())?;
-            if let TokenType::Identifier(name) = &next_type_name.token_type {
-                let final_type = DataType::Option(Box::new(parse_type(name, token_iter)?));
-                assert_token(token_iter.next(), TokenType::RParen)?;
-                Ok(final_type)
-            } else {
-                Err(ParseError::UnexpectedToken)
-            }
+            let data_type = DataType::Option(Box::new(parse_literal_type(
+                &unwrap_or_error(token_iter.next())?.token_type,
+                token_iter,
+            )?));
+            assert_token(token_iter.next(), TokenType::RParen)?;
+            Ok(data_type)
         }
-        "array" => {
+        TokenType::Array => {
             assert_token(token_iter.next(), TokenType::LParen)?;
-            let next_type_name = unwrap_or_error(token_iter.next())?;
-            if let TokenType::Identifier(name) = &next_type_name.token_type {
-                let final_type = DataType::Array(Box::new(parse_type(name, token_iter)?));
-                assert_token(token_iter.next(), TokenType::RParen)?;
-                Ok(final_type)
-            } else {
-                Err(ParseError::UnexpectedToken)
-            }
+            let data_type = DataType::Option(Box::new(parse_literal_type(
+                &unwrap_or_error(token_iter.next())?.token_type,
+                token_iter,
+            )?));
+            assert_token(token_iter.next(), TokenType::RParen)?;
+            Ok(data_type)
         }
-        x => Ok(DataType::UserDefined(x.to_owned())),
+        TokenType::Identifier(name) => Ok(DataType::UserDefined(name.clone())),
+        _ => Err(ParseError::UnexpectedToken),
     }
 }
 

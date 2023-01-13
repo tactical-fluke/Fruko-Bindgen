@@ -21,6 +21,7 @@ impl Default for SourceLocation {
 /// Our token type
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum TokenType {
+    // Grammar
     LParen,
     RParen,
     LCurly,
@@ -29,8 +30,26 @@ pub enum TokenType {
     RSquare,
     Comma,
     Colon,
+    // keywords
     Struct,
     Enum,
+    // type keywords
+    U8,
+    U16,
+    U32,
+    U64,
+    I8,
+    I16,
+    I32,
+    I64,
+    F32,
+    F64,
+    String,
+    Char,
+    Bool,
+    Option,
+    Array,
+    // Generic string identifier
     Identifier(String),
 }
 
@@ -163,6 +182,66 @@ impl<'a> Lexer<'a> {
                 token_type: TokenType::Enum,
                 source_location,
             },
+            "u8" => Token {
+                token_type: TokenType::U8,
+                source_location,
+            },
+            "u16" => Token {
+                token_type: TokenType::U16,
+                source_location,
+            },
+            "u32" => Token {
+                token_type: TokenType::U32,
+                source_location,
+            },
+            "u64" => Token {
+                token_type: TokenType::U64,
+                source_location,
+            },
+            "i8" => Token {
+                token_type: TokenType::I8,
+                source_location,
+            },
+            "i16" => Token {
+                token_type: TokenType::I16,
+                source_location,
+            },
+            "i32" => Token {
+                token_type: TokenType::I32,
+                source_location,
+            },
+            "i64" => Token {
+                token_type: TokenType::I64,
+                source_location,
+            },
+            "f32" => Token {
+                token_type: TokenType::F32,
+                source_location,
+            },
+            "f64" => Token {
+                token_type: TokenType::F64,
+                source_location,
+            },
+            "string" => Token {
+                token_type: TokenType::String,
+                source_location,
+            },
+            "char" => Token {
+                token_type: TokenType::Char,
+                source_location,
+            },
+            "bool" => Token {
+                token_type: TokenType::Bool,
+                source_location,
+            },
+            "option" => Token {
+                token_type: TokenType::Option,
+                source_location,
+            },
+            "array" => Token {
+                token_type: TokenType::Array,
+                source_location,
+            },
             _ => Token {
                 token_type: TokenType::Identifier(name),
                 source_location,
@@ -203,7 +282,7 @@ mod tests {
                 },
             },
             Token {
-                token_type: TokenType::Identifier(String::from("string")),
+                token_type: TokenType::String,
                 source_location: SourceLocation {
                     line: 1,
                     position: 9,
@@ -231,7 +310,7 @@ mod tests {
                 },
             },
             Token {
-                token_type: TokenType::Identifier(String::from("u32")),
+                token_type: TokenType::U32,
                 source_location: SourceLocation {
                     line: 1,
                     position: 22,
@@ -259,7 +338,7 @@ mod tests {
                 },
             },
             Token {
-                token_type: TokenType::Identifier(String::from("f32")),
+                token_type: TokenType::F32,
                 source_location: SourceLocation {
                     line: 1,
                     position: 35,

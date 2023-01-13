@@ -24,12 +24,9 @@ pub fn generate_code(ast: &ASTNode) -> String {
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def
-            .child_nodes
-            .iter()
-            .fold("".to_owned(), |acc, node| {
-                acc + &generate_top_level_type_definition(node)
-            })
+        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold("".to_owned(), |acc, node| {
+            acc + &generate_top_level_type_definition(node)
+        }),
     }
 }
 
