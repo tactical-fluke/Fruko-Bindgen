@@ -1,6 +1,7 @@
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
 
+/// Entry API for Typescript MobX code generation
 pub fn generate_code(ast: &ASTNode) -> String {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => format!(
@@ -30,6 +31,7 @@ pub fn generate_code(ast: &ASTNode) -> String {
     }
 }
 
+/// Generates the specific top level exports
 fn generate_top_level_type_definition(ast: &ASTNode) -> String {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => {
@@ -56,6 +58,7 @@ fn generate_top_level_type_definition(ast: &ASTNode) -> String {
     }
 }
 
+/// Generates the type names
 fn generate_type_name(type_name: &DataType) -> String {
     match type_name {
         DataType::U8
