@@ -171,12 +171,6 @@ fn parse_named_statement_list<'a>(
         child_nodes: parse_named_statement_list_children(token_iter)?,
     };
 
-    // allow and iterate over a trailing comma
-    let potential_comma = unwrap_peek_or_error(token_iter.peek())?;
-    if let TokenType::Comma = potential_comma.token_type {
-        token_iter.next();
-    }
-
     assert_token(token_iter.next(), TokenType::RCurly)?;
 
     Ok(named_statement_list)
@@ -191,11 +185,12 @@ fn parse_named_statement_list_children<'a>(
 ) -> Result<Vec<ASTNode>, ParseError> {
     let mut ret_val = Vec::new();
     loop {
-        let name_token = unwrap_or_error(token_iter.next())?;
+        let name_token = unwrap_peek_or_error(token_iter.peek())?;
         let name = match &name_token.token_type {
             TokenType::Identifier(name) => name,
-            _ => return Err(ParseError::UnexpectedToken),
+            _ => break,
         };
+        token_iter.next();
 
         let following_token = unwrap_or_error(token_iter.next())?;
 
@@ -216,8 +211,6 @@ fn parse_named_statement_list_children<'a>(
         let potential_comma = unwrap_peek_or_error(token_iter.peek())?;
         if let TokenType::Comma = potential_comma.token_type {
             token_iter.next(); // Iterate over the comma
-        } else {
-            break;
         }
     }
     Ok(ret_val)
