@@ -1,3 +1,5 @@
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 use std::str::Chars;
 
@@ -15,6 +17,12 @@ impl Default for SourceLocation {
             line: 1,
             position: 0,
         }
+    }
+}
+
+impl Display for SourceLocation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.position)
     }
 }
 
@@ -64,6 +72,18 @@ pub struct Token {
 pub enum LexError {
     UnknownCharacterError(SourceLocation),
 }
+
+impl Display for LexError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LexError::UnknownCharacterError(location) => {
+                write!(f, "Unknown character at {}", location)
+            }
+        }
+    }
+}
+
+impl Error for LexError {}
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TokenList(pub Vec<Token>);
@@ -119,45 +139,43 @@ impl<'a> Lexer<'a> {
                 continue;
             }
 
+            let source_location = self.source_location.clone();
+
             tokens.push(match char {
                 '(' => Token {
                     token_type: TokenType::LParen,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 '{' => Token {
                     token_type: TokenType::LCurly,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 '[' => Token {
                     token_type: TokenType::LSquare,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 ')' => Token {
                     token_type: TokenType::RParen,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 '}' => Token {
                     token_type: TokenType::RCurly,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 ']' => Token {
                     token_type: TokenType::RSquare,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 ',' => Token {
                     token_type: TokenType::Comma,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 ':' => Token {
                     token_type: TokenType::Colon,
-                    source_location: self.source_location.clone(),
+                    source_location,
                 },
                 x if x.is_alphanumeric() => self.lex_name(x),
-                _ => {
-                    return Err(LexError::UnknownCharacterError(
-                        self.source_location.clone(),
-                    ))
-                }
+                _ => return Err(LexError::UnknownCharacterError(source_location)),
             });
         }
 

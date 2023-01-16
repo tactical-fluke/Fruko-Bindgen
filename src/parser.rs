@@ -1,4 +1,7 @@
-use crate::lexer::{Token, TokenList, TokenType};
+use crate::lexer::{SourceLocation, Token, TokenList, TokenType};
+use std::borrow::Borrow;
+use std::error::Error;
+use std::fmt::{Display, Formatter};
 use std::iter::Peekable;
 
 /// Node type for our Abstract Syntax Tree (AST)
@@ -76,9 +79,24 @@ pub struct DataDefinition {
 /// UnexpectedEndOfTokens - The tokens ended before an ASTNode was finished parsing
 #[derive(Debug, Clone)]
 pub enum ParseError {
-    UnexpectedToken,
+    UnexpectedToken(SourceLocation),
     UnexpectedEndOfTokens,
 }
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseError::UnexpectedToken(location) => {
+                write!(f, "Unexpected token found at {}", location)
+            }
+            ParseError::UnexpectedEndOfTokens => {
+                f.write_str("The stream of tokens ended unexpectedly")
+            }
+        }
+    }
+}
+
+impl Error for ParseError {}
 
 /// Entry parsing function
 /// # Parameters
@@ -129,7 +147,7 @@ fn assert_token(token: Option<&Token>, expected_token: TokenType) -> Result<(), 
             if token.token_type == expected_token {
                 Ok(())
             } else {
-                Err(ParseError::UnexpectedToken)
+                Err(ParseError::UnexpectedToken(token.source_location.clone()))
             }
         }
         None => Err(ParseError::UnexpectedEndOfTokens),
@@ -150,7 +168,7 @@ fn parse<'a>(
         TokenType::Enum => Ok(ASTNode::EnumDeclaration(parse_named_statement_list(
             token_iter,
         )?)),
-        _ => Err(ParseError::UnexpectedToken),
+        _ => Err(ParseError::UnexpectedToken(token.source_location.clone())),
     }
 }
 
@@ -161,7 +179,11 @@ fn parse_named_statement_list<'a>(
     let name_token = unwrap_or_error(token_iter.next())?;
     let name = match &name_token.token_type {
         TokenType::Identifier(name) => name,
-        _ => return Err(ParseError::UnexpectedToken),
+        _ => {
+            return Err(ParseError::UnexpectedToken(
+                name_token.source_location.clone(),
+            ))
+        }
     };
 
     assert_token(token_iter.next(), TokenType::LCurly)?;
@@ -205,7 +227,11 @@ fn parse_named_statement_list_children<'a>(
             TokenType::Comma => {
                 ASTNode::EnumMemberDeclaration(EnumMemberDeclaration { name: name.clone() })
             }
-            _ => return Err(ParseError::UnexpectedToken),
+            _ => {
+                return Err(ParseError::UnexpectedToken(
+                    following_token.source_location.clone(),
+                ))
+            }
         });
 
         let potential_comma = unwrap_peek_or_error(token_iter.peek())?;
@@ -230,19 +256,17 @@ fn parse_struct_member_type_declaration<'a>(
         TokenType::Enum => Ok(ASTNode::EnumDeclaration(parse_named_statement_list(
             token_iter,
         )?)),
-        type_token => Ok(ASTNode::TypeLiteral(parse_literal_type(
-            type_token, token_iter,
-        )?)),
+        _ => Ok(ASTNode::TypeLiteral(parse_literal_type(token, token_iter)?)),
     }
 }
 
 /// Parses a type literal. In the case of an array or an option, the inner types are parsed
 /// recursively
 fn parse_literal_type<'a>(
-    type_token: &TokenType,
+    type_token: &Token,
     token_iter: &mut Peekable<impl Iterator<Item = &'a Token>>,
 ) -> Result<DataType, ParseError> {
-    match type_token {
+    match type_token.token_type.borrow() {
         TokenType::U8 => Ok(DataType::U8),
         TokenType::U16 => Ok(DataType::U16),
         TokenType::U32 => Ok(DataType::U32),
@@ -259,7 +283,7 @@ fn parse_literal_type<'a>(
         TokenType::Option => {
             assert_token(token_iter.next(), TokenType::LParen)?;
             let data_type = DataType::Option(Box::new(parse_literal_type(
-                &unwrap_or_error(token_iter.next())?.token_type,
+                unwrap_or_error(token_iter.next())?,
                 token_iter,
             )?));
             assert_token(token_iter.next(), TokenType::RParen)?;
@@ -268,14 +292,16 @@ fn parse_literal_type<'a>(
         TokenType::Array => {
             assert_token(token_iter.next(), TokenType::LParen)?;
             let data_type = DataType::Option(Box::new(parse_literal_type(
-                &unwrap_or_error(token_iter.next())?.token_type,
+                unwrap_or_error(token_iter.next())?,
                 token_iter,
             )?));
             assert_token(token_iter.next(), TokenType::RParen)?;
             Ok(data_type)
         }
         TokenType::Identifier(name) => Ok(DataType::UserDefined(name.clone())),
-        _ => Err(ParseError::UnexpectedToken),
+        _ => Err(ParseError::UnexpectedToken(
+            type_token.source_location.clone(),
+        )),
     }
 }
 

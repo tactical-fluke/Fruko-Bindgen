@@ -11,7 +11,7 @@ use std::borrow::Borrow;
 /// ast - The abstract syntax tree of which to generate the code. It is assumed to be a valid data definition AST
 /// # Return
 /// returns the generated C++ cpde
-pub fn generate_code(ast: ASTNode) -> String {
+pub fn generate_code(ast: &ASTNode) -> String {
     let new_ast = CXXASTTransformer::transform_ast(ast);
     generate(&new_ast)
 }
@@ -24,11 +24,11 @@ struct CXXASTTransformer {
 
 impl CXXASTTransformer {
     /// Main interface for the CXXASTTransformer
-    fn transform_ast(ast: ASTNode) -> ASTNode {
+    fn transform_ast(ast: &ASTNode) -> ASTNode {
         let mut transformer = Self {
             new_ast: DataDefinition::default(),
         };
-        transformer.transform_ast_impl(&ast);
+        transformer.transform_ast_impl(ast);
         ASTNode::DataDefinition(transformer.new_ast)
     }
 
@@ -215,7 +215,7 @@ mod tests {
     #[test]
     fn test_ast_transformation() {
         assert_eq!(
-            CXXASTTransformer::transform_ast(initial_ast()),
+            CXXASTTransformer::transform_ast(&initial_ast()),
             transformed_ast()
         );
     }
@@ -227,6 +227,6 @@ mod tests {
 
     #[test]
     fn test_cxx_generation() {
-        assert_eq!(generate_code(initial_ast()), GENERATED_OUTPUT);
+        assert_eq!(generate_code(&initial_ast()), GENERATED_OUTPUT);
     }
 }
