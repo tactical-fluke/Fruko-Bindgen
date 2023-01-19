@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let compilation_target = CompilationTarget::from_str(args.output_target.borrow())?;
 
-    std::fs::write(args.output_file, compilation_target.generate_code(&ast))?;
+    std::fs::write(args.output_file, compilation_target.generate_code(&ast)?)?;
 
     Ok(())
 }

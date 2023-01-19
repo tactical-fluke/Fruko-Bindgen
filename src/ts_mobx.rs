@@ -1,60 +1,61 @@
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
+use crate::compilation_target::CompilationError;
 
 /// Entry API for Typescript MobX code generation
-pub fn generate_code(ast: &ASTNode) -> String {
-    match ast {
+pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+    Ok(match ast {
         ASTNode::StructDeclaration(struct_declaration) => format!(
             "types.model({{ {} }})",
             struct_declaration
                 .child_nodes
                 .iter()
-                .fold("".to_owned(), |acc, node| acc + &generate_code(node) + ", ")
+                .fold("".to_owned(), |acc, node| acc + &generate_code(node)? + ", ")
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
             "types.enum({{ {} }})",
             enum_declaration
                 .child_nodes
                 .iter()
-                .fold("".to_owned(), |acc, node| acc + &generate_code(node) + ", ")
+                .fold("".to_owned(), |acc, node| acc + &generate_code(node)? + ", ")
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
             struct_member.name,
-            generate_code(struct_member.data_type.borrow())
+            generate_code(struct_member.data_type.borrow())?
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
         ASTNode::DataDefinition(def) => def.child_nodes.iter().fold("".to_owned(), |acc, node| {
-            acc + &generate_top_level_type_definition(node)
+            acc + generate_top_level_type_definition(node)?
         }),
-    }
+    })
 }
 
 /// Generates the specific top level exports
-fn generate_top_level_type_definition(ast: &ASTNode) -> String {
+fn generate_top_level_type_definition(ast: &ASTNode) -> Rsult<String, CompilationError> {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => {
             let preamble = format!(
                 "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
                 struct_declaration.name,
-                generate_code(ast),
+                generate_code(ast)?,
                 struct_declaration.name,
                 struct_declaration.name
             );
-            preamble
+            Ok(preamble)
         }
         ASTNode::EnumDeclaration(enum_declaration) => {
             let preamble = format!(
                 "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
                 enum_declaration.name,
-                generate_code(ast),
+                generate_code(ast)?,
                 enum_declaration.name,
                 enum_declaration.name
             );
-            preamble
+            Ok(preamble)
         }
-        _ => "".to_owned(),
+        _ => Err(CompilationError::InvalidAST),
     }
 }
 

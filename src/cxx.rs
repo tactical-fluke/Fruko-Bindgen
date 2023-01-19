@@ -4,6 +4,7 @@
 use crate::parser::{
     ASTNode, DataDefinition, DataType, NamedStatementList, StructMemberDeclaration,
 };
+use crate::compilation_target::CompilationError;
 use std::borrow::Borrow;
 
 /// Main C++ generation function. Takes an AST, and returns the generated code
@@ -11,9 +12,9 @@ use std::borrow::Borrow;
 /// ast - The abstract syntax tree of which to generate the code. It is assumed to be a valid data definition AST
 /// # Return
 /// returns the generated C++ cpde
-pub fn generate_code(ast: &ASTNode) -> String {
-    let new_ast = CXXASTTransformer::transform_ast(ast);
-    generate(&new_ast)
+pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+    let new_ast = CXXASTTransformer::transform_ast(ast)?;
+    Ok(generate(&new_ast))
 }
 
 /// Helper struct, made to just keep the transformed AST in memory whilst the function recursively
@@ -24,17 +25,17 @@ struct CXXASTTransformer {
 
 impl CXXASTTransformer {
     /// Main interface for the CXXASTTransformer
-    fn transform_ast(ast: &ASTNode) -> ASTNode {
+    fn transform_ast(ast: &ASTNode) -> Result<ASTNode, CompilationError> {
         let mut transformer = Self {
             new_ast: DataDefinition::default(),
         };
-        transformer.transform_ast_impl(ast);
-        ASTNode::DataDefinition(transformer.new_ast)
+        transformer.transform_ast_impl(ast)?;
+        Ok(ASTNode::DataDefinition(transformer.new_ast))
     }
 
     /// Does the actual transformation. The transformation is only taking inline struct and enum
     /// declarations out of line, the AST is otherwise untouched
-    fn transform_ast_impl(&mut self, ast: &ASTNode) {
+    fn transform_ast_impl(&mut self, ast: &ASTNode) -> Result<(), CompilationError> {
         match ast {
             ASTNode::StructDeclaration(struct_declaration) => {
                 let mut pushed_struct = NamedStatementList::new(struct_declaration.name.clone());
@@ -42,7 +43,7 @@ impl CXXASTTransformer {
                     if let ASTNode::StructMemberDeclaration(member_declaration) = member {
                         match member_declaration.data_type.borrow() {
                             ASTNode::StructDeclaration(inline_struct_declaration) => {
-                                self.transform_ast_impl(member_declaration.data_type.borrow());
+                                self.transform_ast_impl(member_declaration.data_type.borrow())?;
                                 let new_member = StructMemberDeclaration {
                                     name: member_declaration.name.clone(),
                                     data_type: Box::new(ASTNode::TypeLiteral(
@@ -56,7 +57,7 @@ impl CXXASTTransformer {
                                     .push(ASTNode::StructMemberDeclaration(new_member));
                             }
                             ASTNode::EnumDeclaration(inline_enum_declaration) => {
-                                self.transform_ast_impl(member_declaration.data_type.borrow());
+                                self.transform_ast_impl(member_declaration.data_type.borrow())?;
                                 let new_member = StructMemberDeclaration {
                                     name: member_declaration.name.clone(),
                                     data_type: Box::new(ASTNode::TypeLiteral(
@@ -82,11 +83,12 @@ impl CXXASTTransformer {
             }
             ASTNode::DataDefinition(data) => {
                 for child in &data.child_nodes {
-                    self.transform_ast_impl(child);
+                    self.transform_ast_impl(child)?;
                 }
             }
-            _ => {}
+            _ => return Err(CompilationError::InvalidAST)
         }
+        Ok(())
     }
 }
 
