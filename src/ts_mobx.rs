@@ -1,7 +1,6 @@
 use crate::compilation_target::CompilationError;
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
-use clap::builder::Str;
 
 /// Entry API for Typescript MobX code generation
 pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
@@ -11,28 +10,14 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             struct_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node| {
-                    if let Ok(output) = acc {
-                        Ok(output + &generate_code(node)? + ", ")
-                    }
-                    else {
-                        acc
-                    }
-                })?
+                .fold(Ok("".to_owned()), accumulate_inner_declarations)?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
             "types.enum({{ {} }})",
             enum_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node| {
-                if let Ok(output) = acc {
-                    Ok(output + &generate_code(node)? + ", ")
-                }
-                else {
-                    acc
-                }
-            })?
+                .fold(Ok("".to_owned()), accumulate_inner_declarations)?
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
@@ -41,16 +26,28 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node|
-            {
+        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold(
+            Ok("".to_owned()),
+            |acc: Result<String, CompilationError>, node| {
                 if let Ok(output) = acc {
                     Ok(output + &generate_top_level_type_definition(node)?)
-                }
-                else {
+                } else {
                     acc
                 }
-        })?,
+            },
+        )?,
     })
+}
+
+fn accumulate_inner_declarations(
+    acc: Result<String, CompilationError>,
+    node: &ASTNode,
+) -> Result<String, CompilationError> {
+    if let Ok(output) = acc {
+        Ok(output + &generate_code(node)? + ", ")
+    } else {
+        acc
+    }
 }
 
 /// Generates the specific top level exports
@@ -141,6 +138,9 @@ mod tests {
 
     #[test]
     fn test_generate_ts_mobx() {
-        assert_eq!(generate_code(&initial_ast()).expect("should generate code"), GENERATED_CODE.to_owned())
+        assert_eq!(
+            generate_code(&initial_ast()).expect("should generate code"),
+            GENERATED_CODE.to_owned()
+        )
     }
 }
