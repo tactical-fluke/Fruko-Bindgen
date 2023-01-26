@@ -1,6 +1,7 @@
 use crate::compilation_target::CompilationError;
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
+use clap::builder::Str;
 
 /// Entry API for Typescript MobX code generation
 pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
@@ -10,18 +11,28 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             struct_declaration
                 .child_nodes
                 .iter()
-                .fold("".to_owned(), |acc, node| acc
-                    + &generate_code(node)?
-                    + ", ")
+                .fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node| {
+                    if let Ok(output) = acc {
+                        Ok(output + &generate_code(node)? + ", ")
+                    }
+                    else {
+                        acc
+                    }
+                })?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
             "types.enum({{ {} }})",
             enum_declaration
                 .child_nodes
                 .iter()
-                .fold("".to_owned(), |acc, node| acc
-                    + &generate_code(node)?
-                    + ", ")
+                .fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node| {
+                if let Ok(output) = acc {
+                    Ok(output + &generate_code(node)? + ", ")
+                }
+                else {
+                    acc
+                }
+            })?
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
@@ -30,14 +41,20 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold("".to_owned(), |acc, node| {
-            acc + generate_top_level_type_definition(node)?
-        }),
+        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold(Ok("".to_owned()), |acc: Result<String, CompilationError>, node|
+            {
+                if let Ok(output) = acc {
+                    Ok(output + &generate_top_level_type_definition(node)?)
+                }
+                else {
+                    acc
+                }
+        })?,
     })
 }
 
 /// Generates the specific top level exports
-fn generate_top_level_type_definition(ast: &ASTNode) -> Rsult<String, CompilationError> {
+fn generate_top_level_type_definition(ast: &ASTNode) -> Result<String, CompilationError> {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => Ok(format!(
             "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
@@ -124,6 +141,6 @@ mod tests {
 
     #[test]
     fn test_generate_ts_mobx() {
-        assert_eq!(generate_code(&initial_ast()), GENERATED_CODE.to_owned())
+        assert_eq!(generate_code(&initial_ast()).expect("should generate code"), GENERATED_CODE.to_owned())
     }
 }
