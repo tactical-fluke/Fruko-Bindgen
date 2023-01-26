@@ -10,14 +10,18 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             struct_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), accumulate_inner_declarations)?
+                .fold(Ok("".to_owned()), |acc, node| Ok(acc?
+                    + &generate_code(node)?
+                    + ", "))?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
             "types.enum({{ {} }})",
             enum_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), accumulate_inner_declarations)?
+                .fold(Ok("".to_owned()), |acc, node| Ok(acc?
+                    + &generate_code(node)?
+                    + ", "))?
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
@@ -29,25 +33,10 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
         ASTNode::DataDefinition(def) => def.child_nodes.iter().fold(
             Ok("".to_owned()),
             |acc: Result<String, CompilationError>, node| {
-                if let Ok(output) = acc {
-                    Ok(output + &generate_top_level_type_definition(node)?)
-                } else {
-                    acc
-                }
+                Ok(acc? + &generate_top_level_type_definition(node)?)
             },
         )?,
     })
-}
-
-fn accumulate_inner_declarations(
-    acc: Result<String, CompilationError>,
-    node: &ASTNode,
-) -> Result<String, CompilationError> {
-    if let Ok(output) = acc {
-        Ok(output + &generate_code(node)? + ", ")
-    } else {
-        acc
-    }
 }
 
 /// Generates the specific top level exports
