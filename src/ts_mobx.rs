@@ -10,7 +10,7 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             struct_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), |acc, node| Ok(acc?
+                .try_fold("".to_owned(), |acc, node| Ok(acc
                     + &generate_code(node)?
                     + ", "))?
         ),
@@ -19,7 +19,7 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             enum_declaration
                 .child_nodes
                 .iter()
-                .fold(Ok("".to_owned()), |acc, node| Ok(acc?
+                .try_fold("".to_owned(), |acc, node| Ok(acc
                     + &generate_code(node)?
                     + ", "))?
         ),
@@ -30,10 +30,10 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def.child_nodes.iter().fold(
-            Ok("".to_owned()),
-            |acc: Result<String, CompilationError>, node| {
-                Ok(acc? + &generate_top_level_type_definition(node)?)
+        ASTNode::DataDefinition(def) => def.child_nodes.iter().try_fold(
+            "".to_owned(),
+            |acc, node| {
+                Ok(acc + &generate_top_level_type_definition(node)?)
             },
         )?,
     })
