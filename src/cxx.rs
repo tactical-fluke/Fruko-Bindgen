@@ -4,15 +4,23 @@
 use crate::parser::{
     ASTNode, DataDefinition, DataType, NamedStatementList, StructMemberDeclaration,
 };
-use crate::compilation_target::CompilationError;
+use crate::compilation_target::{CompilationError, CompilationTarget};
 use std::borrow::Borrow;
+
+pub struct CXXGenerator;
+
+impl CompilationTarget for CXXGenerator {
+    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
+        generate_code(ast)
+    }
+}
 
 /// Main C++ generation function. Takes an AST, and returns the generated code
 /// # Parameters
 /// ast - The abstract syntax tree of which to generate the code. It is assumed to be a valid data definition AST
 /// # Return
-/// returns the generated C++ cpde
-pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+/// returns the generated C++ code
+fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
     let new_ast = CXXASTTransformer::transform_ast(ast)?;
     Ok(generate(&new_ast))
 }

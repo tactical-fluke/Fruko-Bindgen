@@ -1,5 +1,5 @@
 use clap::Parser;
-use fruko_bindgen::compilation_target::CompilationTarget;
+use fruko_bindgen::compilation_target::Target;
 use fruko_bindgen::*;
 use std::borrow::Borrow;
 use std::error::Error;
@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tokens = lexer::lex_tokens(input_contents)?;
     let ast = parser::parse_tokens(tokens)?;
 
-    let compilation_target = CompilationTarget::from_str(args.output_target.borrow())?;
+    let compilation_target = Target::from_str(args.output_target.borrow())?;
 
     std::fs::write(args.output_file, compilation_target.generate_code(&ast)?)?;
 

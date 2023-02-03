@@ -2,10 +2,15 @@ use crate::parser::ASTNode;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
+use crate::cxx::CXXGenerator;
+use crate::ts_mobx::TSMobXGenerator;
 
-pub enum CompilationTarget {
-    CXX,
-    TsMobx,
+pub trait CompilationTarget {
+    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError>;
+}
+
+pub struct Target {
+    target: Box<dyn CompilationTarget>,
 }
 
 #[derive(Debug)]
@@ -27,13 +32,13 @@ impl Display for CompilationError {
 
 impl Error for CompilationError {}
 
-impl FromStr for CompilationTarget {
+impl FromStr for Target {
     type Err = CompilationError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "cxx" | "cpp" | "c++" => Ok(Self::CXX),
-            "ts-mobx" | "typescript-mobx" => Ok(Self::TsMobx),
+            "cxx" | "cpp" | "c++" => Ok(Self { target: Box::new(CXXGenerator {}) }),
+            "ts-mobx" | "typescript-mobx" => Ok(Self { target: Box::new(TSMobXGenerator {}) }),
             unknown_target => Err(CompilationError::UnknownTarget(
                 unknown_target.to_owned(),
             )),
@@ -41,11 +46,8 @@ impl FromStr for CompilationTarget {
     }
 }
 
-impl CompilationTarget {
+impl Target {
     pub fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
-        match self {
-            CompilationTarget::CXX => crate::cxx::generate_code(ast),
-            CompilationTarget::TsMobx => crate::ts_mobx::generate_code(ast),
-        }
+        self.target.generate_code(ast)
     }
 }

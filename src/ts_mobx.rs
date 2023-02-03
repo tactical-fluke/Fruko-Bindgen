@@ -7,12 +7,20 @@
 /// type using the MobX types, as well as a snapshot type, derived from the regular type.
 ///
 /// NOTE: currently, using a non-inline enum definition may not work as expected.
-use crate::compilation_target::CompilationError;
+use crate::compilation_target::{CompilationError, CompilationTarget};
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
 
+pub struct TSMobXGenerator;
+
+impl CompilationTarget for TSMobXGenerator {
+    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
+        generate_code(ast)
+    }
+}
+
 /// Entry API for Typescript MobX code generation
-pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
     Ok(match ast {
         ASTNode::StructDeclaration(struct_declaration) => format!(
             "types.model({{ {} }})",
