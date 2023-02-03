@@ -1,4 +1,4 @@
-///Code generation for C++
+/// Code generation for C++
 /// Includes AST transformation, which effectively just pulls inline struct and enum declarations
 /// out of line
 use crate::parser::{
@@ -99,8 +99,7 @@ fn generate(ast: &ASTNode) -> String {
             let body = struct_definition
                 .child_nodes
                 .iter()
-                .map(generate)
-                .fold(String::new(), |acc, x| acc + &x);
+                .fold(String::new(), |acc, x| acc + &generate(x));
             format!("struct {} {{ {} }};", struct_definition.name, body)
         }
         ASTNode::EnumDeclaration(enum_declaration) => {
@@ -120,8 +119,7 @@ fn generate(ast: &ASTNode) -> String {
         ASTNode::DataDefinition(def) => def
             .child_nodes
             .iter()
-            .map(generate)
-            .fold(String::new(), |acc, x| acc + &x),
+            .fold(String::new(), |acc, x| acc + &generate(x)),
     }
 }
 
@@ -217,7 +215,7 @@ mod tests {
     #[test]
     fn test_ast_transformation() {
         assert_eq!(
-            CXXASTTransformer::transform_ast(&initial_ast()),
+            CXXASTTransformer::transform_ast(&initial_ast()).expect("should be able to transform"),
             transformed_ast()
         );
     }
@@ -229,6 +227,6 @@ mod tests {
 
     #[test]
     fn test_cxx_generation() {
-        assert_eq!(generate_code(&initial_ast()), GENERATED_OUTPUT);
+        assert_eq!(generate_code(&initial_ast()).expect("should be able to generate"), GENERATED_OUTPUT);
     }
 }

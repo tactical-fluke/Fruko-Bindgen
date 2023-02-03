@@ -1,3 +1,12 @@
+/// Generation for Typescript with MobX
+///
+/// The AST is not transformed at all, as the declaration structure is the same as the allowed
+/// data definition structure
+///
+/// The root level data definitions come with some slight extras, exporting both the regular
+/// type using the MobX types, as well as a snapshot type, derived from the regular type.
+///
+/// NOTE: currently, using a non-inline enum definition may not work as expected.
 use crate::compilation_target::CompilationError;
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
@@ -15,7 +24,7 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
                     + ", "))?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
-            "types.enum({{ {} }})",
+            "types.enum([ {} ])",
             enum_declaration
                 .child_nodes
                 .iter()
@@ -28,14 +37,14 @@ pub fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
             struct_member.name,
             generate_code(struct_member.data_type.borrow())?
         ),
-        ASTNode::EnumMemberDeclaration(enum_member) => enum_member.name.clone(),
+        ASTNode::EnumMemberDeclaration(enum_member) => format!("'{}'", enum_member.name.clone()),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def.child_nodes.iter().try_fold(
-            "".to_owned(),
-            |acc, node| {
+        ASTNode::DataDefinition(def) => def
+            .child_nodes
+            .iter()
+            .try_fold("".to_owned(), |acc, node| {
                 Ok(acc + &generate_top_level_type_definition(node)?)
-            },
-        )?,
+            })?,
     })
 }
 
