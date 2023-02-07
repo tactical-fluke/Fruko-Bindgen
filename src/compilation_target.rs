@@ -37,8 +37,8 @@ impl FromStr for Target {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "cxx" | "cpp" | "c++" => Ok(Self { target: Box::new(CXXGenerator {}) }),
-            "ts-mobx" | "typescript-mobx" => Ok(Self { target: Box::new(TSMobXGenerator {}) }),
+            "cxx" | "cpp" | "c++" | "h" => Ok(Self { target: Box::new(CXXGenerator {}) }),
+            "ts-mobx" | "typescript-mobx" | "ts" => Ok(Self { target: Box::new(TSMobXGenerator {}) }),
             unknown_target => Err(CompilationError::UnknownTarget(
                 unknown_target.to_owned(),
             )),

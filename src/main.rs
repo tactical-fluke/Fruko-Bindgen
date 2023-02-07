@@ -1,19 +1,17 @@
 use clap::Parser;
 use fruko_bindgen::compilation_target::Target;
 use fruko_bindgen::*;
-use std::borrow::Borrow;
 use std::error::Error;
 use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Parser)]
 struct Cli {
-    /// Input data definition
+    /// Input data definition file
     input_file: PathBuf,
 
-    output_target: String,
-
-    output_file: PathBuf,
+    /// The files that the generated output will be placed into
+    output_files: Vec<PathBuf>,
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -24,9 +22,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let tokens = lexer::lex_tokens(input_contents)?;
     let ast = parser::parse_tokens(tokens)?;
 
-    let compilation_target = Target::from_str(args.output_target.borrow())?;
+    for file in args.output_files {
+        let compilation_target = Target::from_str(file.extension().expect("should have extension").to_str().expect("should be valid UTF8"))?;
 
-    std::fs::write(args.output_file, compilation_target.generate_code(&ast)?)?;
+        std::fs::write(file, compilation_target.generate_code(&ast)?)?;
+    }
 
     Ok(())
 }
