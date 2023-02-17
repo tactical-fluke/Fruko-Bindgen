@@ -7,20 +7,27 @@
 /// type using the MobX types, as well as a snapshot type, derived from the regular type.
 ///
 /// NOTE: currently, using a non-inline enum definition may not work as expected.
-use crate::compilation_target::{CompilationError, CompilationTarget};
+use crate::compilation_target::{CompilationError, CompilationInfo, CompilationTarget};
 use crate::parser::{ASTNode, DataType};
 use std::borrow::Borrow;
 
 pub struct TSMobXGenerator;
 
 impl CompilationTarget for TSMobXGenerator {
-    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
-        generate_code(ast)
+    fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
+        generate_code(ast, &generate_preamble(compilation_info))
     }
 }
 
+fn generate_preamble(compilation_info: &CompilationInfo) -> String {
+    compilation_info.preamble_comments.iter()
+        .map(|preamble| format!("// {}", preamble))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
 /// Entry API for Typescript MobX code generation
-fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+fn generate_code(ast: &ASTNode, preamble: &str) -> Result<String, CompilationError> {
     Ok(match ast {
         ASTNode::StructDeclaration(struct_declaration) => format!(
             "types.model({{ {} }})",
@@ -28,7 +35,7 @@ fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
                 .child_nodes
                 .iter()
                 .try_fold("".to_owned(), |acc, node| Ok(acc
-                    + &generate_code(node)?
+                    + &generate_code(node, preamble)?
                     + ", "))?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
@@ -37,39 +44,39 @@ fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
                 .child_nodes
                 .iter()
                 .try_fold("".to_owned(), |acc, node| Ok(acc
-                    + &generate_code(node)?
+                    + &generate_code(node, preamble)?
                     + ", "))?
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
             struct_member.name,
-            generate_code(struct_member.data_type.borrow())?
+            generate_code(struct_member.data_type.borrow(), preamble)?
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => format!("'{}'", enum_member.name.clone()),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => def
+        ASTNode::DataDefinition(def) => format!("{}\n{}", preamble, def
             .child_nodes
             .iter()
             .try_fold("".to_owned(), |acc, node| {
-                Ok(acc + &generate_top_level_type_definition(node)?)
-            })?,
+                Ok(acc + &generate_top_level_type_definition(node, preamble)?)
+            })?),
     })
 }
 
 /// Generates the specific top level exports
-fn generate_top_level_type_definition(ast: &ASTNode) -> Result<String, CompilationError> {
+fn generate_top_level_type_definition(ast: &ASTNode, preamble: &str) -> Result<String, CompilationError> {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => Ok(format!(
             "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
             struct_declaration.name,
-            generate_code(ast)?,
+            generate_code(ast, preamble)?,
             struct_declaration.name,
             struct_declaration.name
         )),
         ASTNode::EnumDeclaration(enum_declaration) => Ok(format!(
             "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
             enum_declaration.name,
-            generate_code(ast)?,
+            generate_code(ast, preamble)?,
             enum_declaration.name,
             enum_declaration.name
         )),
@@ -145,7 +152,7 @@ mod tests {
     #[test]
     fn test_generate_ts_mobx() {
         assert_eq!(
-            generate_code(&initial_ast()).expect("should generate code"),
+            generate_code(&initial_ast(), "").expect("should generate code"),
             GENERATED_CODE.to_owned()
         )
     }

@@ -4,14 +4,14 @@
 use crate::parser::{
     ASTNode, DataDefinition, DataType, NamedStatementList, StructMemberDeclaration,
 };
-use crate::compilation_target::{CompilationError, CompilationTarget};
+use crate::compilation_target::{CompilationError, CompilationInfo, CompilationTarget};
 use std::borrow::Borrow;
 
 pub struct CXXGenerator;
 
 impl CompilationTarget for CXXGenerator {
-    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
-        generate_code(ast)
+    fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
+        generate_code(ast, compilation_info)
     }
 }
 
@@ -20,9 +20,9 @@ impl CompilationTarget for CXXGenerator {
 /// ast - The abstract syntax tree of which to generate the code. It is assumed to be a valid data definition AST
 /// # Return
 /// returns the generated C++ code
-fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
+fn generate_code(ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
     let new_ast = CXXASTTransformer::transform_ast(ast)?;
-    Ok(generate(&new_ast))
+    Ok(generate(&new_ast, &generate_preamble(compilation_info)))
 }
 
 /// Helper struct, made to just keep the transformed AST in memory whilst the function recursively
@@ -100,34 +100,41 @@ impl CXXASTTransformer {
     }
 }
 
+fn generate_preamble(compilation_info: &CompilationInfo) -> String {
+    compilation_info.preamble_comments.iter()
+        .map(|preamble| format!("// {}", preamble))
+        .collect::<Vec<String>>()
+        .join("\n")
+}
+
 /// Turns the transformed AST into a string of valid C++
-fn generate(ast: &ASTNode) -> String {
+fn generate(ast: &ASTNode, preamble: &str) -> String {
     match ast {
         ASTNode::StructDeclaration(struct_definition) => {
             let body = struct_definition
                 .child_nodes
                 .iter()
-                .fold(String::new(), |acc, x| acc + &generate(x));
+                .fold(String::new(), |acc, x| acc + &generate(x, preamble));
             format!("struct {} {{ {} }};", struct_definition.name, body)
         }
         ASTNode::EnumDeclaration(enum_declaration) => {
             let body = enum_declaration
                 .child_nodes
                 .iter()
-                .map(generate)
+                .map(|node| generate(node, preamble))
                 .collect::<Vec<String>>() // Iterator::intersperse is unstable
                 .join(",");
             format!("enum class {} {{ {} }};", enum_declaration.name, body)
         }
         ASTNode::StructMemberDeclaration(member) => {
-            format!("{} {};", generate(member.data_type.borrow()), member.name)
+            format!("{} {};", generate(member.data_type.borrow(), preamble), member.name)
         }
         ASTNode::EnumMemberDeclaration(member) => member.name.clone(),
         ASTNode::TypeLiteral(type_name) => generate_type_name(type_name),
-        ASTNode::DataDefinition(def) => def
+        ASTNode::DataDefinition(def) => format!("{}\n{}", preamble, def
             .child_nodes
             .iter()
-            .fold(String::new(), |acc, x| acc + &generate(x)),
+            .fold(String::new(), |acc, x| acc + &generate(x, preamble))),
     }
 }
 
@@ -230,11 +237,11 @@ mod tests {
 
     #[test]
     fn test_cxx_code_generation() {
-        assert_eq!(generate(&transformed_ast()), GENERATED_OUTPUT);
+        assert_eq!(generate(&transformed_ast(), ""), GENERATED_OUTPUT);
     }
 
     #[test]
     fn test_cxx_generation() {
-        assert_eq!(generate_code(&initial_ast()).expect("should be able to generate"), GENERATED_OUTPUT);
+        assert_eq!(generate_code(&initial_ast(), &CompilationInfo { source_file_name: "".to_string(), preamble_comments: Vec::new() }).expect("should be able to generate"), GENERATED_OUTPUT);
     }
 }

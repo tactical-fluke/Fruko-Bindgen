@@ -5,8 +5,13 @@ use std::str::FromStr;
 use crate::cxx::CXXGenerator;
 use crate::ts_mobx::TSMobXGenerator;
 
+pub struct CompilationInfo {
+    pub source_file_name: String,
+    pub preamble_comments: Vec<String>,
+}
+
 pub trait CompilationTarget {
-    fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError>;
+    fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError>;
 }
 
 pub struct Target {
@@ -47,7 +52,7 @@ impl FromStr for Target {
 }
 
 impl Target {
-    pub fn generate_code(&self, ast: &ASTNode) -> Result<String, CompilationError> {
-        self.target.generate_code(ast)
+    pub fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
+        self.target.generate_code(ast, compilation_info)
     }
 }
