@@ -15,7 +15,7 @@ pub struct TSMobXGenerator;
 
 impl CompilationTarget for TSMobXGenerator {
     fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
-        generate_code(ast, &generate_preamble(compilation_info))
+        Ok(format!("{}\n{}", generate_preamble(compilation_info), generate_code(ast)?))
     }
 }
 
@@ -27,7 +27,7 @@ fn generate_preamble(compilation_info: &CompilationInfo) -> String {
 }
 
 /// Entry API for Typescript MobX code generation
-fn generate_code(ast: &ASTNode, preamble: &str) -> Result<String, CompilationError> {
+fn generate_code(ast: &ASTNode) -> Result<String, CompilationError> {
     Ok(match ast {
         ASTNode::StructDeclaration(struct_declaration) => format!(
             "types.model({{ {} }})",
@@ -35,7 +35,7 @@ fn generate_code(ast: &ASTNode, preamble: &str) -> Result<String, CompilationErr
                 .child_nodes
                 .iter()
                 .try_fold("".to_owned(), |acc, node| Ok(acc
-                    + &generate_code(node, preamble)?
+                    + &generate_code(node)?
                     + ", "))?
         ),
         ASTNode::EnumDeclaration(enum_declaration) => format!(
@@ -44,39 +44,39 @@ fn generate_code(ast: &ASTNode, preamble: &str) -> Result<String, CompilationErr
                 .child_nodes
                 .iter()
                 .try_fold("".to_owned(), |acc, node| Ok(acc
-                    + &generate_code(node, preamble)?
+                    + &generate_code(node)?
                     + ", "))?
         ),
         ASTNode::StructMemberDeclaration(struct_member) => format!(
             "{}: {}",
             struct_member.name,
-            generate_code(struct_member.data_type.borrow(), preamble)?
+            generate_code(struct_member.data_type.borrow())?
         ),
         ASTNode::EnumMemberDeclaration(enum_member) => format!("'{}'", enum_member.name.clone()),
         ASTNode::TypeLiteral(data_type) => generate_type_name(data_type),
-        ASTNode::DataDefinition(def) => format!("{}\n{}", preamble, def
+        ASTNode::DataDefinition(def) => def
             .child_nodes
             .iter()
             .try_fold("".to_owned(), |acc, node| {
-                Ok(acc + &generate_top_level_type_definition(node, preamble)?)
-            })?),
+                Ok(acc + &generate_top_level_type_definition(node)?)
+            })?,
     })
 }
 
 /// Generates the specific top level exports
-fn generate_top_level_type_definition(ast: &ASTNode, preamble: &str) -> Result<String, CompilationError> {
+fn generate_top_level_type_definition(ast: &ASTNode) -> Result<String, CompilationError> {
     match ast {
         ASTNode::StructDeclaration(struct_declaration) => Ok(format!(
             "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
             struct_declaration.name,
-            generate_code(ast, preamble)?,
+            generate_code(ast)?,
             struct_declaration.name,
             struct_declaration.name
         )),
         ASTNode::EnumDeclaration(enum_declaration) => Ok(format!(
             "export const {} = {}; export type {}SnapshotType = SnapshotIn<typeof {}>;",
             enum_declaration.name,
-            generate_code(ast, preamble)?,
+            generate_code(ast)?,
             enum_declaration.name,
             enum_declaration.name
         )),
@@ -152,7 +152,7 @@ mod tests {
     #[test]
     fn test_generate_ts_mobx() {
         assert_eq!(
-            generate_code(&initial_ast(), "").expect("should generate code"),
+            generate_code(&initial_ast()).expect("should generate code"),
             GENERATED_CODE.to_owned()
         )
     }

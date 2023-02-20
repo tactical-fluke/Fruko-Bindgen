@@ -22,7 +22,7 @@ impl CompilationTarget for CXXGenerator {
 /// returns the generated C++ code
 fn generate_code(ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
     let new_ast = CXXASTTransformer::transform_ast(ast)?;
-    Ok(generate(&new_ast, &generate_preamble(compilation_info)))
+    Ok(format!("{}\n{}", generate_preamble(compilation_info), generate(&new_ast)))
 }
 
 /// Helper struct, made to just keep the transformed AST in memory whilst the function recursively
@@ -108,33 +108,33 @@ fn generate_preamble(compilation_info: &CompilationInfo) -> String {
 }
 
 /// Turns the transformed AST into a string of valid C++
-fn generate(ast: &ASTNode, preamble: &str) -> String {
+fn generate(ast: &ASTNode) -> String {
     match ast {
         ASTNode::StructDeclaration(struct_definition) => {
             let body = struct_definition
                 .child_nodes
                 .iter()
-                .fold(String::new(), |acc, x| acc + &generate(x, preamble));
+                .fold(String::new(), |acc, x| acc + &generate(x));
             format!("struct {} {{ {} }};", struct_definition.name, body)
         }
         ASTNode::EnumDeclaration(enum_declaration) => {
             let body = enum_declaration
                 .child_nodes
                 .iter()
-                .map(|node| generate(node, preamble))
+                .map(|node| generate(node))
                 .collect::<Vec<String>>() // Iterator::intersperse is unstable
                 .join(",");
             format!("enum class {} {{ {} }};", enum_declaration.name, body)
         }
         ASTNode::StructMemberDeclaration(member) => {
-            format!("{} {};", generate(member.data_type.borrow(), preamble), member.name)
+            format!("{} {};", generate(member.data_type.borrow()), member.name)
         }
         ASTNode::EnumMemberDeclaration(member) => member.name.clone(),
         ASTNode::TypeLiteral(type_name) => generate_type_name(type_name),
-        ASTNode::DataDefinition(def) => format!("{}\n{}", preamble, def
+        ASTNode::DataDefinition(def) => def
             .child_nodes
             .iter()
-            .fold(String::new(), |acc, x| acc + &generate(x, preamble))),
+            .fold(String::new(), |acc, x| acc + &generate(x)),
     }
 }
 
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_cxx_code_generation() {
-        assert_eq!(generate(&transformed_ast(), ""), GENERATED_OUTPUT);
+        assert_eq!(generate(&transformed_ast()), GENERATED_OUTPUT);
     }
 
     #[test]
