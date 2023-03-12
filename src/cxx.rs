@@ -22,7 +22,15 @@ impl CompilationTarget for CXXGenerator {
 /// returns the generated C++ code
 fn generate_code(ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
     let new_ast = CXXASTTransformer::transform_ast(ast)?;
-    Ok(format!("{}\n{}", generate_preamble(compilation_info), generate(&new_ast)))
+    Ok(format!("{}\n{}\n{}", generate_preamble(compilation_info), generate_includes(), generate(&new_ast)))
+}
+
+fn generate_includes() -> String {
+    const INCLUDED_HEADERS: [&str; 4] = ["cstdint", "optional", "vector", "string"];
+
+    INCLUDED_HEADERS
+        .map(|header| format!("#include <{}>", header))
+        .join("\n")
 }
 
 /// Helper struct, made to just keep the transformed AST in memory whilst the function recursively

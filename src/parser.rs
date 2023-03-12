@@ -291,7 +291,7 @@ fn parse_literal_type<'a>(
         }
         TokenType::Array => {
             assert_token(token_iter.next(), TokenType::LParen)?;
-            let data_type = DataType::Option(Box::new(parse_literal_type(
+            let data_type = DataType::Array(Box::new(parse_literal_type(
                 unwrap_or_error(token_iter.next())?,
                 token_iter,
             )?));

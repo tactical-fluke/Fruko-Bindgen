@@ -15,7 +15,7 @@ pub struct TSMobXGenerator;
 
 impl CompilationTarget for TSMobXGenerator {
     fn generate_code(&self, ast: &ASTNode, compilation_info: &CompilationInfo) -> Result<String, CompilationError> {
-        Ok(format!("{}\n{}", generate_preamble(compilation_info), generate_code(ast)?))
+        Ok(format!("{}\nimport 'mobx-state-tree';\n{}", generate_preamble(compilation_info), generate_code(ast)?))
     }
 }
 
